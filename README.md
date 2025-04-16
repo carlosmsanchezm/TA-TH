@@ -17,20 +17,23 @@ This solution proposes a cloud-native architecture leveraging **AWS** and incorp
 * **Core Infrastructure:** AWS VPC, EKS (Kubernetes), ALB, Aurora (PostgreSQL), Timestream, S3, SQS.
 * **Management & Automation:** Terraform (IaC), Helm (K8s Packaging), Docker (Containerization), GitHub Actions (CI/CD - implied).
 
+
 ## Repository Structure
 
-This repository is organized directly mapping to the assignment tasks:
+This repository is organized to directly map to the assignment tasks:
 
-* **`1-Architecture-Design/`**: Contains the detailed AWS architecture.
-    * `README.md`: Architectural rationale and design decisions.
-    * `a-Infrastructure-Diagram/`: Visual diagram (Mermaid code and PNG image).
-    * `b-Infrastructure-Components/`: Breakdown of infrastructure components and their roles.
+* **`1-Architecture-Design/`**: The AWS architecture design and rationale
+  * `a-Infrastructure-Diagram/`: Visual representation of the architecture
+  * `b-Infrastructure-Components/`: Detailed breakdown of each infrastructure component
 
-* **`2-Infrastructure-Deployment/`**: Illustrates the infrastructure deployment approach.
-    * `README.md`: Overview of the Terraform IaC strategy.
-    * `a-Terraform-Structure/`: Proposed Terraform project layout for managing AWS resources, emphasizing modularity and state management.
+* **`2-Infrastructure-Deployment/`**: Infrastructure-as-Code implementation approach
+  * `a-Terraform-Structure/`: Modular Terraform project structure with separate components for network, security, EKS, data stores, and more
+  * Contains reusable modules and deployment order to build the complete infrastructure
 
-* **`3-Service-Deployment/`**: Outlines the application deployment strategy onto Kubernetes (EKS).
-    * `README.md`: Overview of the Helm-based deployment methodology.
-    * `a-Deployment-Methodology/`: Explanation of using Helm and Kubernetes features (HPA, PDB, Probes etc.) for scalable and HA deployments.
-    * `b-Example-Configuration-Helm/`: A concrete example Helm chart for the Front-end service, demonstrating the implementation.
+* **`3-Service-Deployment/`**: Kubernetes application deployment strategy
+  * `a-Deployment-Methodology/`: Helm-based approach for deploying microservices
+    * Contains Helm charts for the command-service, telemetry-service, and frontend-service
+  * `b-Example-Configuration-Helm/`: Detailed example implementation for the frontend service
+    * Demonstrates Kubernetes best practices (HPA, PDB, ingress configuration, etc.)
+
+Each directory contains README files with explanations of design decisions, implementation details, and usage instructions. The structure follows a logical progression from architecture design to infrastructure deployment to application deployment, providing a complete solution for the Satellite Telemetry, Tracking, and Control (TT&C) system.
