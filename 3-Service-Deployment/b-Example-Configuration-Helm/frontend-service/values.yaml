@@ -1,0 +1,142 @@
+# charts/frontend-service/values.yaml
+
+# -- Default number of pods to run. Overridden by HPA if enabled.
+replicaCount: 2
+
+image:
+  # -- ECR repository URI for the frontend service image
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/frontend-service # Placeholder - MUST BE REPLACED
+  pullPolicy: IfNotPresent
+  # -- Image tag (e.g., "v1.2.3"). Defaults to .Chart.AppVersion if not set. Best practice is to use specific tags.
+  tag: ""
+
+# -- Kubernetes ServiceAccount configuration
+serviceAccount:
+  # -- Specifies whether a ServiceAccount should be created
+  create: true
+  # -- Annotations to add to the service account (e.g., for IRSA)
+  # MUST BE REPLACED with the actual IAM role ARN created by Terraform
+  annotations: {}
+  # Example for IRSA:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/TtcFrontendEksRole # Replace with actual ARN
+  # -- The name of the ServiceAccount to use. If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# -- Kubernetes Service configuration
+service:
+  type: ClusterIP
+  # -- Port the Service will expose (e.g., 80 for HTTP)
+  port: 80
+  # -- Port the application container listens on
+  targetPort: 8080 # Assuming the frontend app listens on 8080
+
+# -- Kubernetes Ingress configuration (for ALB)
+ingress:
+  # -- Enable Ingress resource creation
+  enabled: true
+  # -- IngressClass resource name (should match AWS Load Balancer Controller setup)
+  className: "alb"
+  # -- Annotations for the Ingress resource (AWS ALB specific)
+  annotations:
+    # Route traffic directly to Pod IPs for better performance
+    alb.ingress.kubernetes.io/target-type: ip
+    # Specify ALB listener ports and HTTPS redirect
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    # -- !!! IMPORTANT: Specify the ARN of your ACM certificate for HTTPS !!!
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT_ID:certificate/YOUR_CERT_ID # Replace with actual ARN
+    # Optional: Health check path override, security groups, WAFv2 ARN etc.
+    # alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    # alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:... # Replace with actual WAF ARN
+  # -- Ingress host configuration
+  hosts:
+    - host: ttc.example.com # Replace with your actual domain
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- Ingress TLS configuration (often handled by cert-manager or directly via ACM annotation)
+  tls: []
+  # Example using ACM cert annotation (preferred):
+  # tls:
+  #   - hosts:
+  #       - ttc.example.com
+
+# -- Resource requests and limits for the frontend container
+# Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+resources:
+  requests:
+    cpu: 100m    # 0.1 vCPU
+    memory: 128Mi # 128 Mebibytes
+  limits:
+    cpu: 500m    # 0.5 vCPU
+    memory: 512Mi
+
+# -- Horizontal Pod Autoscaler configuration
+autoscaling:
+  # -- Enable HorizontalPodAutoscaler creation
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5 # Scale up to 5 pods
+  # -- Target average CPU utilization percentage to trigger scaling
+  targetCPUUtilizationPercentage: 75
+  # -- Optional: Target average memory utilization percentage
+  # targetMemoryUtilizationPercentage: 75
+
+# -- Pod Disruption Budget configuration
+podDisruptionBudget:
+  # -- Enable PodDisruptionBudget creation
+  enabled: true
+  # -- Minimum number of pods that must remain available during voluntary disruptions
+  minAvailable: 1
+  # -- OR maximum number/percentage of pods that can be unavailable (use one or the other)
+  # maxUnavailable: 25%
+
+# -- Pod anti-affinity rules to encourage spreading pods across nodes and AZs for HA
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      # -- Prefer spreading across availability zones
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels: {} # Populated by helper template
+          topologyKey: topology.kubernetes.io/zone
+      # -- Prefer spreading across nodes within a zone
+      - weight: 50
+        podAffinityTerm:
+          labelSelector:
+            matchLabels: {} # Populated by helper template
+          topologyKey: kubernetes.io/hostname
+
+# -- Liveness and Readiness probe configurations
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+probes:
+  liveness:
+    # -- Liveness probe checks if the container is running. If it fails, Kubelet kills and restarts the container.
+    httpGet:
+      path: /healthz # Replace with your app's health check endpoint
+      port: http # Corresponds to the container port named 'http'
+    initialDelaySeconds: 15 # Wait 15s before first probe
+    periodSeconds: 20   # Probe every 20s
+    failureThreshold: 3 # Consider failed after 3 consecutive failures
+    timeoutSeconds: 5
+  readiness:
+    # -- Readiness probe checks if the container is ready to serve traffic. If it fails, the pod is removed from Service endpoints.
+    httpGet:
+      path: /readyz # Replace with your app's readiness endpoint
+      port: http
+    initialDelaySeconds: 5 # Wait 5s before first probe
+    periodSeconds: 10  # Probe every 10s
+    failureThreshold: 3 # Consider failed after 3 consecutive failures
+    timeoutSeconds: 5
+
+# -- Optional: Specify node selectors or tolerations if needed
+nodeSelector: {}
+tolerations: []
+
+# -- Optional: Define image pull secrets if using private registry outside ECR
+imagePullSecrets: []
+
+# -- Override the generated full name prefix
+nameOverride: ""
+fullnameOverride: ""

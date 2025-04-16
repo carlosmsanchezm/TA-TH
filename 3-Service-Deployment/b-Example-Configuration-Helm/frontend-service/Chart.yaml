@@ -1,0 +1,13 @@
+# charts/frontend-service/Chart.yaml
+apiVersion: v2
+name: frontend-service
+description: Helm chart for the TT&C Frontend Service
+# Application charts should be type 'application'
+type: application
+
+# Version of the Helm chart itself
+version: 0.1.0
+
+# Version of the application being deployed
+# This can be overridden in values.yaml or via --set
+appVersion: "1.0.0"

@@ -1,0 +1,55 @@
+# charts/frontend-service/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "frontend-service.fullname" . }}
+  labels:
+    {{- include "frontend-service.labels" . | nindent 4 }}
+spec:
+  # replicas field is managed by HPA if enabled, otherwise uses .Values.replicaCount
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "frontend-service.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate # Ensures zero-downtime updates
+    rollingUpdate:
+      maxUnavailable: 25% # Example - allows 25% pods unavailable during update
+      maxSurge: 25%       # Example - allows 25% more pods than desired during update
+  template:
+    metadata:
+      labels:
+        {{- include "frontend-service.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "frontend-service.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http # Port name used by Service and Probes
+              containerPort: {{ .Values.service.targetPort }} # App's listening port
+              protocol: TCP
+          # --- Liveness and Readiness Probes ---
+          livenessProbe:
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+          # --- Resource Requests and Limits ---
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      # --- Pod Anti-Affinity ---
+      affinity:
+        {{- $affinity := deepCopy .Values.affinity }}
+        {{- $podLabels := include "frontend-service.selectorLabels" . }}
+        {{- range $key, $value := $affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution }}
+        {{- $value.podAffinityTerm.labelSelector.matchLabels = fromYaml $podLabels }}
+        {{- end }}
+        {{- toYaml $affinity | nindent 8 }}
+      # --- Other spec fields: nodeSelector, tolerations etc. ---
+
+# --- NOTE: templates/service.yaml, hpa.yaml, pdb.yaml, ingress.yaml, serviceaccount.yaml, _helpers.tpl
+# ---       would also be included, using values from values.yaml similarly.
+# ---       Showing all templates would be lengthy, but this illustrates the core principles.
